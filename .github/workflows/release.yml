@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Check Out Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set Up MSVC Toolchain
         uses: ilammy/msvc-dev-cmd@v1
