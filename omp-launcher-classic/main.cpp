@@ -90,6 +90,10 @@ extern "C" HRESULT WINAPI SetCurrentProcessExplicitAppUserModelID(PCWSTR app_id)
 constexpr auto kServerListUrl = "https://api.open.mp/servers/full";
 constexpr auto kOmpClientDownloadUrl = "https://assets.open.mp/omp-client.dll";
 constexpr auto kHelperPasswordEnvVar = "OMP_LAUNCHER_SERVER_PASSWORD";
+constexpr auto kNonAffiliationLabel = "Unofficial / not affiliated with open.mp";
+constexpr auto kNonAffiliationNotice =
+    "This is an unofficial community project. It is not affiliated with, endorsed by, "
+    "sponsored by, or published by open.mp or the openmultiplayer organization.";
 constexpr int kDefaultPort = 7777;
 constexpr int kPingTimeoutValue = 9999;
 constexpr int kQueryTimeoutMs = 1500;
@@ -1247,6 +1251,7 @@ class LauncherWindow final : public QMainWindow {
   QLabel *pingValue_ = nullptr;
   QLabel *modeValue_ = nullptr;
   QLabel *languageValue_ = nullptr;
+  QLabel *affiliationNoticeLabel_ = nullptr;
   PingChartWidget *pingChart_ = nullptr;
   QAction *addServerAction_ = nullptr;
   QAction *addFavoriteAction_ = nullptr;
@@ -1328,6 +1333,9 @@ class LauncherWindow final : public QMainWindow {
     rootLayout->addWidget(tabs_, 0);
 
     setCentralWidget(central);
+    affiliationNoticeLabel_ = new QLabel(QString::fromLatin1(kNonAffiliationLabel), this);
+    affiliationNoticeLabel_->setToolTip(QString::fromLatin1(kNonAffiliationNotice));
+    statusBar()->addPermanentWidget(affiliationNoticeLabel_);
     statusBar()->showMessage("Fetching server list from open.mp API...");
   }
 
@@ -1350,8 +1358,12 @@ class LauncherWindow final : public QMainWindow {
     connect(refreshAction_, &QAction::triggered, this, [this]() { refreshFromMaster(); });
     connect(settingsAction_, &QAction::triggered, this, [this]() { showSettingsDialog(); });
     connect(aboutAction_, &QAction::triggered, this, [this]() {
-      QMessageBox::information(this, "About open.mp Classic",
-                               "open.mp Classic\n\nQt frontend with open.mp server list and SA:MP query backend.");
+      QMessageBox::information(
+          this, "About open.mp Classic",
+          QString("open.mp Classic\n\n"
+                  "Qt frontend with open.mp server list and SA:MP query backend.\n\n"
+                  "%1")
+              .arg(QString::fromLatin1(kNonAffiliationNotice)));
     });
 
     connectAction_->setEnabled(false);

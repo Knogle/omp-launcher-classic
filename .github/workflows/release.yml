@@ -117,7 +117,7 @@ jobs:
           & $makensis `
             /DAPP_NAME="open.mp Classic" `
             /DAPP_VERSION="$version" `
-            /DAPP_PUBLISHER="open.mp Classic" `
+            /DAPP_PUBLISHER="omp-launcher-classic contributors" `
             /DDIST_DIR="$pwd\build-win64\omp-launcher-classic-dist" `
             /DOUT_FILE="$pwd\$setupFile" `
             /DAPP_ICON="$pwd\omp-launcher-classic\assets\samp_icon.ico" `

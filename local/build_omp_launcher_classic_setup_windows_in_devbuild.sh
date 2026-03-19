@@ -20,7 +20,7 @@ toolbox run --container devbuild bash -lc "
   makensis \
     -DAPP_NAME='open.mp Classic' \
     -DAPP_VERSION='$version-$commit' \
-    -DAPP_PUBLISHER='open.mp Classic' \
+    -DAPP_PUBLISHER='omp-launcher-classic contributors' \
     -DDIST_DIR='$dist_dir' \
     -DOUT_FILE='$output_file' \
     -DAPP_ICON='$icon_path' \

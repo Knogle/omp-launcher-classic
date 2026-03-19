@@ -2,6 +2,10 @@
 
 Qt-based classic launcher frontend with a Windows Rust injection helper and NSIS installer.
 
+This is an unofficial community-maintained project.
+It is not affiliated with, endorsed by, sponsored by, or published by open.mp or the `openmultiplayer` organization.
+See [`NOTICE.md`](./NOTICE.md) for the branding and non-affiliation notice.
+
 The project targets Win64 only.
 The Qt frontend can also be built on Linux, but the Wine wrapper, GTA:SA launch path, and `samp.dll` injection flow are not finished there yet. For that reason, only Windows builds are currently produced and supported.
 
@@ -16,11 +20,13 @@ The Qt frontend can also be built on Linux, but the Wine wrapper, GTA:SA launch 
 - This repository ships with the full [MPL-2.0 license text](./LICENSE).
 - This repository contains MPL-2.0-covered derivative code from `openmultiplayer/launcher`.
 - See [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) for the exact covered files and upstream references.
+- See [`NOTICE.md`](./NOTICE.md) for branding and non-affiliation details.
 
 ## Repository Hygiene
 
 - Contribution guide: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 - Security policy: [`SECURITY.md`](./SECURITY.md)
+- Branding and affiliation notice: [`NOTICE.md`](./NOTICE.md)
 - Dependency update automation: [`.github/dependabot.yml`](./.github/dependabot.yml)
 - CI workflows: [`.github/workflows`](./.github/workflows)
 
@@ -79,7 +85,7 @@ Build the installer:
 makensis `
   /DAPP_NAME="open.mp Classic" `
   /DAPP_VERSION="working" `
-  /DAPP_PUBLISHER="open.mp Classic" `
+  /DAPP_PUBLISHER="omp-launcher-classic contributors" `
   /DDIST_DIR="$pwd\build-win64\omp-launcher-classic-dist" `
   /DOUT_FILE="$pwd\build-win64\omp-launcher-classic-working-win64-setup.exe" `
   /DAPP_ICON="$pwd\omp-launcher-classic\assets\samp_icon.ico" `

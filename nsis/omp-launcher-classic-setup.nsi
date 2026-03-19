@@ -19,7 +19,7 @@ CRCCheck on
 !endif
 
 !ifndef APP_PUBLISHER
-  !define APP_PUBLISHER "open.mp Classic"
+  !define APP_PUBLISHER "omp-launcher-classic contributors"
 !endif
 
 !ifndef DIST_DIR
@@ -94,7 +94,7 @@ Section "Install"
   WriteRegDWORD HKCU "${UNINSTALL_REG_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINSTALL_REG_KEY}" "NoRepair" 1
 
-  MessageBox MB_ICONINFORMATION|MB_OK "Due to licensing, omp-client.dll is not included.$\r$\n$\r$\nDownload it manually from:$\r$\n${OMP_CLIENT_URL}$\r$\n$\r$\nThen place omp-client.dll in:$\r$\n$INSTDIR"
+  MessageBox MB_ICONINFORMATION|MB_OK "${APP_NAME} is an unofficial community project.$\r$\nIt is not affiliated with, endorsed by, sponsored by, or published by open.mp or the openmultiplayer organization.$\r$\n$\r$\nDue to licensing, omp-client.dll is not included.$\r$\n$\r$\nDownload it manually from:$\r$\n${OMP_CLIENT_URL}$\r$\n$\r$\nThen place omp-client.dll in:$\r$\n$INSTDIR"
 SectionEnd
 
 Section "Uninstall"
