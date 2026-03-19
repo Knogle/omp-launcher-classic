@@ -1,8 +1,11 @@
 # open.mp Classic Launcher
 
+![open.mp Classic screenshot](./docs/launcher-screenshot.png)
+
 Qt-based classic launcher frontend with a Windows Rust injection helper and NSIS installer.
 
-This is an unofficial community-maintained project.
+This is my personal hobby project around a classic open.mp-style launcher frontend.
+It is an unofficial project.
 It is not affiliated with, endorsed by, sponsored by, or published by open.mp or the `openmultiplayer` organization.
 See [`NOTICE.md`](./NOTICE.md) for the branding and non-affiliation notice.
 
