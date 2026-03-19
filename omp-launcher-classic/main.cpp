@@ -25,6 +25,7 @@
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMainWindow>
@@ -480,6 +481,14 @@ QString displayPing(int ping) {
     return "*";
   }
   return QString::number(ping);
+}
+
+QString unresolvedFavoriteHostname(const QString &host, quint16 port) {
+  return QString("(Retrieving info...) %1").arg(serverKey(host, port));
+}
+
+bool isUnresolvedFavoriteHostname(const QString &hostname, const QString &host, quint16 port) {
+  return hostname == unresolvedFavoriteHostname(host, port);
 }
 
 QString decodeSampString(const QByteArray &data) {
@@ -1239,6 +1248,7 @@ class LauncherWindow final : public QMainWindow {
   QLabel *modeValue_ = nullptr;
   QLabel *languageValue_ = nullptr;
   PingChartWidget *pingChart_ = nullptr;
+  QAction *addServerAction_ = nullptr;
   QAction *addFavoriteAction_ = nullptr;
   QAction *removeFavoriteAction_ = nullptr;
   QAction *connectAction_ = nullptr;
@@ -1305,11 +1315,13 @@ class LauncherWindow final : public QMainWindow {
     tabs_->setExpanding(false);
     tabs_->setDrawBase(true);
     connect(tabs_, &QTabBar::currentChanged, this, [this](int) {
+      updateTabActions();
       populateServerTable();
       if (activeTab() == ActiveTab::Favorites) {
         enqueuePingQueries(currentSourceKeys());
       }
     });
+    updateTabActions();
 
     rootLayout->addWidget(topSplitter, 1);
     rootLayout->addWidget(bottomPanel, 0);
@@ -1322,6 +1334,7 @@ class LauncherWindow final : public QMainWindow {
   void buildMenus() {
     const QColor iconColor = actionIconColor(this);
     connectAction_ = new QAction(makePlayActionIcon(iconColor), "Connect", this);
+    addServerAction_ = new QAction(style()->standardIcon(QStyle::SP_FileDialogNewFolder), "Add Favorite Server...", this);
     addFavoriteAction_ = new QAction(favoriteStateIcon(), "Add To Favorites", this);
     removeFavoriteAction_ = new QAction(makeCloseActionIcon(iconColor), "Remove From Favorites", this);
     serverPropertiesAction_ = new QAction(makeServerPropertiesIcon(iconColor), "Server Properties", this);
@@ -1330,6 +1343,7 @@ class LauncherWindow final : public QMainWindow {
     aboutAction_ = new QAction(makeInfoActionIcon(iconColor), "About", this);
 
     connect(connectAction_, &QAction::triggered, this, [this]() { connectSelectedServer(); });
+    connect(addServerAction_, &QAction::triggered, this, [this]() { addFavoriteServerManually(); });
     connect(addFavoriteAction_, &QAction::triggered, this, [this]() { addSelectedToFavorites(); });
     connect(removeFavoriteAction_, &QAction::triggered, this, [this]() { removeSelectedFromFavorites(); });
     connect(serverPropertiesAction_, &QAction::triggered, this, [this]() { showServerPropertiesDialog(); });
@@ -1341,6 +1355,7 @@ class LauncherWindow final : public QMainWindow {
     });
 
     connectAction_->setEnabled(false);
+    addServerAction_->setEnabled(false);
     addFavoriteAction_->setEnabled(false);
     removeFavoriteAction_->setEnabled(false);
     serverPropertiesAction_->setEnabled(false);
@@ -1355,6 +1370,8 @@ class LauncherWindow final : public QMainWindow {
     viewMenu->addAction(refreshAction_);
 
     auto *serversMenu = menuBar()->addMenu("Servers");
+    serversMenu->addAction(addServerAction_);
+    serversMenu->addSeparator();
     serversMenu->addAction(connectAction_);
     serversMenu->addAction(addFavoriteAction_);
     serversMenu->addAction(removeFavoriteAction_);
@@ -1378,6 +1395,7 @@ class LauncherWindow final : public QMainWindow {
     toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     toolbar->addAction(connectAction_);
+    toolbar->addAction(addServerAction_);
     toolbar->addAction(addFavoriteAction_);
     toolbar->addAction(removeFavoriteAction_);
     toolbar->addAction(serverPropertiesAction_);
@@ -1611,7 +1629,7 @@ class LauncherWindow final : public QMainWindow {
 
     const auto persistFavoriteRecord = [this, key, server, serverPasswordEdit]() {
       FavoriteRecord updated = favoritesStore_.recordForKey(key);
-      updated.name = server.hostname;
+      updated.name = isUnresolvedFavoriteHostname(server.hostname, server.host, server.port) ? QString() : server.hostname;
       updated.host = server.host;
       updated.port = server.port;
       updated.serverPassword = serverPasswordEdit->text();
@@ -1654,6 +1672,58 @@ class LauncherWindow final : public QMainWindow {
       return;
     }
     connectToServer(key);
+  }
+
+  void addFavoriteServerManually() {
+    bool ok = false;
+    const QString endpoint =
+        QInputDialog::getText(this, "Add Favorite Server", "Enter server HOST:PORT", QLineEdit::Normal, {}, &ok);
+    if (!ok) {
+      return;
+    }
+
+    QString host;
+    quint16 port = kDefaultPort;
+    if (!parseEndpoint(endpoint.trimmed(), &host, &port)) {
+      QMessageBox::warning(this, "Invalid Address", "Enter the server as HOST:PORT.");
+      return;
+    }
+
+    const QString key = serverKey(host, port);
+    const bool hadExistingServer = servers_.contains(key);
+    const ServerData previousServer = servers_.value(key);
+    ServerData server = servers_.value(key);
+    server.favorite = true;
+    server.host = host;
+    server.port = port;
+    if (server.hostname.isEmpty() || server.hostname == key) {
+      server.hostname = unresolvedFavoriteHostname(host, port);
+    }
+    servers_.insert(key, server);
+
+    FavoriteRecord record;
+    record.host = host;
+    record.port = port;
+    record.serverPassword = favoritesStore_.recordForKey(key).serverPassword;
+    favoritesStore_.addOrUpdate(record);
+    if (!favoritesStore_.save()) {
+      if (hadExistingServer) {
+        servers_.insert(key, previousServer);
+      } else {
+        servers_.remove(key);
+      }
+      QMessageBox::warning(this, "Save Failed", "Could not save favorites.");
+      return;
+    }
+
+    populateServerTable();
+    enqueuePingQueries({key});
+    const int row = rowForKey(key);
+    if (row >= 0) {
+      serverTable_->selectRow(row);
+    }
+    startDetailQuery(key);
+    statusBar()->showMessage(QString("Added favorite server %1").arg(key), 4000);
   }
 
   QString resolveConfiguredLauncherPath(const LauncherSettings &settings) const {
@@ -1996,10 +2066,12 @@ class LauncherWindow final : public QMainWindow {
       if (it == servers_.end()) {
         ServerData server;
         server.favorite = true;
-        server.hostname = record.name.isEmpty() ? key : record.name;
+        server.hostname = record.name.isEmpty() ? unresolvedFavoriteHostname(record.host, record.port) : record.name;
         server.host = record.host;
         server.port = record.port;
         it = servers_.insert(key, server);
+      } else if (record.name.isEmpty() && (it->hostname.isEmpty() || it->hostname == key)) {
+        it->hostname = unresolvedFavoriteHostname(record.host, record.port);
       }
       it->favorite = true;
     }
@@ -2265,6 +2337,7 @@ class LauncherWindow final : public QMainWindow {
 
     activeDetailKey_ = key;
     detailRefreshTimer_.start();
+    updateTabActions();
     updateSelectionPanel(servers_[key]);
     updateFavoriteActions(servers_[key]);
     startDetailQuery(key);
@@ -2308,6 +2381,14 @@ class LauncherWindow final : public QMainWindow {
     addFavoriteAction_->setEnabled(false);
     removeFavoriteAction_->setEnabled(false);
     serverPropertiesAction_->setEnabled(false);
+    updateTabActions();
+  }
+
+  void updateTabActions() {
+    if (addServerAction_ == nullptr) {
+      return;
+    }
+    addServerAction_->setEnabled(tabs_ != nullptr && activeTab() == ActiveTab::Favorites);
   }
 
   void refreshSelectedServerDetails() {
@@ -2439,6 +2520,14 @@ class LauncherWindow final : public QMainWindow {
       server.maxPlayers = result.maxPlayers;
       if (!result.hostname.isEmpty()) {
         server.hostname = result.hostname;
+        if (server.favorite) {
+          FavoriteRecord updated = favoritesStore_.recordForKey(key);
+          updated.name = result.hostname;
+          updated.host = server.host;
+          updated.port = server.port;
+          favoritesStore_.addOrUpdate(updated);
+          favoritesStore_.save();
+        }
       }
       server.mode = result.gamemode;
       server.language = result.language;
