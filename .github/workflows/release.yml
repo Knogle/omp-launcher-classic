@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-win64:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up MSVC Toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set Up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: inject_helper
+
+      - name: Set Up Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+
+          $nsisCandidates = @(
+            "$env:ProgramFiles\NSIS",
+            "${env:ProgramFiles(x86)}\NSIS"
+          )
+
+          foreach ($candidate in $nsisCandidates) {
+            if (Test-Path (Join-Path $candidate "makensis.exe")) {
+              Add-Content -Path $env:GITHUB_PATH -Value $candidate
+              break
+            }
+          }
+
+      - name: Configure CMake
+        shell: pwsh
+        run: >
+          cmake -G Ninja
+          -S omp-launcher-classic
+          -B build-win64/omp-launcher-classic
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Qt Frontend
+        shell: pwsh
+        run: cmake --build build-win64/omp-launcher-classic --config Release
+
+      - name: Build Injection Helper
+        shell: pwsh
+        run: cargo build --locked --release --manifest-path inject_helper/Cargo.toml
+
+      - name: Package Dist Directory
+        shell: pwsh
+        run: |
+          $distDir = "build-win64/omp-launcher-classic-dist"
+          $appBuildDir = "build-win64/omp-launcher-classic"
+          $exePath = Join-Path $appBuildDir "omp-launcher-classic.exe"
+          $helperPath = "inject_helper/target/release/omp-launcher-classic-inject-helper.exe"
+
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Copy-Item $exePath $distDir
+          Copy-Item $helperPath $distDir
+          Copy-Item "THIRD_PARTY_NOTICES.md" $distDir
+
+          & windeployqt `
+            --release `
+            --no-translations `
+            --dir $distDir `
+            $exePath
+
+      - name: Build Release Assets
+        id: assets
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "manual-$($env:GITHUB_SHA.Substring(0, 7))" }
+          $distDir = "build-win64/omp-launcher-classic-dist"
+          $setupFile = "build-win64/omp-launcher-classic-$version-win64-setup.exe"
+          $zipFile = "build-win64/omp-launcher-classic-$version-win64-dist.zip"
+          $nsisCandidates = @(
+            (Get-Command makensis -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+            "$env:ProgramFiles\NSIS\makensis.exe",
+            "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          ) | Where-Object { $_ -and (Test-Path $_) }
+
+          if ($nsisCandidates.Count -eq 0) {
+            throw "makensis.exe was not found after installing NSIS."
+          }
+
+          $makensis = $nsisCandidates[0]
+
+          & $makensis `
+            /DAPP_NAME="open.mp Classic" `
+            /DAPP_VERSION="$version" `
+            /DAPP_PUBLISHER="open.mp Classic" `
+            /DDIST_DIR="$pwd\build-win64\omp-launcher-classic-dist" `
+            /DOUT_FILE="$pwd\$setupFile" `
+            /DAPP_ICON="$pwd\omp-launcher-classic\assets\samp_icon.ico" `
+            "$pwd\nsis\omp-launcher-classic-setup.nsi"
+
+          if (Test-Path $zipFile) {
+            Remove-Item $zipFile -Force
+          }
+
+          Compress-Archive -Path "$distDir\*" -DestinationPath $zipFile -Force
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "setup_file=$setupFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "zip_file=$zipFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: omp-launcher-classic-${{ steps.assets.outputs.version }}-win64
+          path: |
+            ${{ steps.assets.outputs.setup_file }}
+            ${{ steps.assets.outputs.zip_file }}
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.assets.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.assets.outputs.setup_file }}
+            ${{ steps.assets.outputs.zip_file }}
