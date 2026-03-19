@@ -1,5 +1,10 @@
 # open.mp Classic Launcher
 
+[![Win64 CI](https://github.com/Knogle/omp-launcher-classic/actions/workflows/build-win64.yml/badge.svg)](https://github.com/Knogle/omp-launcher-classic/actions/workflows/build-win64.yml)
+[![Release](https://img.shields.io/github/v/release/Knogle/omp-launcher-classic)](https://github.com/Knogle/omp-launcher-classic/releases)
+[![Downloads](https://img.shields.io/github/downloads/Knogle/omp-launcher-classic/total)](https://github.com/Knogle/omp-launcher-classic/releases)
+[![License](https://img.shields.io/github/license/Knogle/omp-launcher-classic)](./LICENSE)
+
 ![open.mp Classic screenshot](./docs/launcher-screenshot.png)
 
 Qt-based classic launcher frontend with a Windows Rust injection helper and NSIS installer.
