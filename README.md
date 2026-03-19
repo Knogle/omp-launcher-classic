@@ -3,6 +3,7 @@
 Qt-based classic launcher frontend with a Windows Rust injection helper and NSIS installer.
 
 The project targets Win64 only.
+The Qt frontend can also be built on Linux, but the Wine wrapper, GTA:SA launch path, and `samp.dll` injection flow are not finished there yet. For that reason, only Windows builds are currently produced and supported.
 
 ## Project Status
 
