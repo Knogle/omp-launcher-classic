@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="assets/samp_icon.ico">assets/samp_icon.ico</file>
+    <file alias="assets/samp_icon.png">assets/samp_icon.png</file>
+  </qresource>
+</RCC>

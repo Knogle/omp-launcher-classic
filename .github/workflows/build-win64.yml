@@ -1,0 +1,111 @@
+name: Build Win64
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-win64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-win64:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up MSVC Toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set Up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: inject_helper
+
+      - name: Set Up Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtsvg
+          cache: true
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Configure CMake
+        shell: pwsh
+        run: >
+          cmake -G Ninja
+          -S omp-launcher-classic
+          -B build-win64/omp-launcher-classic
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Qt Frontend
+        shell: pwsh
+        run: cmake --build build-win64/omp-launcher-classic --config Release
+
+      - name: Build Injection Helper
+        shell: pwsh
+        run: cargo build --locked --release --manifest-path inject_helper/Cargo.toml
+
+      - name: Package Dist Directory
+        shell: pwsh
+        run: |
+          $distDir = "build-win64/omp-launcher-classic-dist"
+          $appBuildDir = "build-win64/omp-launcher-classic"
+          $exePath = Join-Path $appBuildDir "omp-launcher-classic.exe"
+          $helperPath = "target/release/omp-launcher-classic-inject-helper.exe"
+
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Copy-Item $exePath $distDir
+          Copy-Item $helperPath $distDir
+          Copy-Item "THIRD_PARTY_NOTICES.md" $distDir
+
+          & windeployqt `
+            --release `
+            --no-translations `
+            --dir $distDir `
+            $exePath
+
+      - name: Build NSIS Installer
+        shell: pwsh
+        run: |
+          $version = "working-$($env:GITHUB_SHA.Substring(0, 7))"
+          $outFile = "build-win64/omp-launcher-classic-$version-win64-setup.exe"
+
+          & makensis `
+            /DAPP_NAME="open.mp Classic" `
+            /DAPP_VERSION="$version" `
+            /DAPP_PUBLISHER="open.mp Classic" `
+            /DDIST_DIR="$pwd\build-win64\omp-launcher-classic-dist" `
+            /DOUT_FILE="$pwd\$outFile" `
+            /DAPP_ICON="$pwd\omp-launcher-classic\assets\samp_icon.ico" `
+            "$pwd\nsis\omp-launcher-classic-setup.nsi"
+
+      - name: Upload Dist Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omp-launcher-classic-win64-dist
+          path: build-win64/omp-launcher-classic-dist
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omp-launcher-classic-win64-setup
+          path: build-win64/*-win64-setup.exe

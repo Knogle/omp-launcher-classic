@@ -1,0 +1,11 @@
+build/
+build-*/
+target/
+local/*
+!local/*.sh
+*.user
+*.log
+*.zip
+*.7z
+*.exe
+!.gitignore

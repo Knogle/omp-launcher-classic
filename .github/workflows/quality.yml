@@ -1,0 +1,39 @@
+name: Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: inject_helper
+
+      - name: Check Formatting
+        run: cargo fmt --check --manifest-path inject_helper/Cargo.toml
+
+      - name: Run Clippy
+        run: cargo clippy --manifest-path inject_helper/Cargo.toml --all-targets -- -D warnings

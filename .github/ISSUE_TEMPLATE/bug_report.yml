@@ -1,0 +1,36 @@
+name: Bug Report
+description: Report a reproducible problem in the launcher, helper, installer, or build pipeline.
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: List the exact steps needed to reproduce the issue.
+      placeholder: |
+        1. Launch ...
+        2. Open ...
+        3. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, build type, commit SHA, and whether this was run under native Windows or Wine/Lutris.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and Screenshots
+      description: Paste relevant logs or attach screenshots if available.
