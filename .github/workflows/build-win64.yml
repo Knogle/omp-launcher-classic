@@ -122,13 +122,13 @@ jobs:
             "$pwd\nsis\omp-launcher-classic-setup.nsi"
 
       - name: Upload Dist Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: omp-launcher-classic-win64-dist
           path: build-win64/omp-launcher-classic-dist
 
       - name: Upload Installer Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: omp-launcher-classic-win64-setup
           path: build-win64/*-win64-setup.exe
