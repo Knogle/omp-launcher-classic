@@ -63,7 +63,7 @@ Package the distributable folder:
 ```powershell
 $distDir = "build-win64/omp-launcher-classic-dist"
 $exePath = "build-win64/omp-launcher-classic/omp-launcher-classic.exe"
-$helperPath = "target/release/omp-launcher-classic-inject-helper.exe"
+$helperPath = "inject_helper/target/release/omp-launcher-classic-inject-helper.exe"
 
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 Copy-Item $exePath $distDir
